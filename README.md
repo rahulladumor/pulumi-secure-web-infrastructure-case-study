@@ -51,13 +51,33 @@ Complete infrastructure using **Pulumi TypeScript** with:
 
 ## 🏗️ Architecture
 
+### High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph Users
+        Client[Users/Clients]
+    end
+    
+    subgraph AWS Cloud
+        VPC[VPC<br/>Multi-AZ]
+        ALB[Load Balancer<br/>High Availability]
+        EC2[EC2 Instances<br/>Auto Scaling]
+        DB[Database<br/>Multi-AZ]
+        S3[S3 Storage<br/>Encrypted]
+    end
+    
+    subgraph Monitoring
+        CW[CloudWatch<br/>Metrics & Logs]
+    end
+    
+    Client --> ALB
+    ALB --> EC2
+    EC2 --> DB
+    EC2 --> S3
+    EC2 --> CW
 ```
-Internet → CloudFront (CDN) → WAF → ALB → EC2 (Multi-AZ)
-             ↓                          ↓
-          S3 Logs                   DynamoDB
-             ↓                          ↓
-        KMS Encrypted              KMS Encrypted
-```
+
 
 ## 🚀 Quick Deploy
 
