@@ -1,0 +1,3 @@
+name: secure-infrastructure
+runtime: nodejs
+description: Production-ready secure web infrastructure with CloudFront and WAF
