@@ -1,101 +1,185 @@
-# 🏗️ Architecture - Secure Web Infrastructure
+# Architecture Diagrams - Secure Web Infrastructure
 
-## Design Principles
+Comprehensive Mermaid diagrams for the infrastructure.
 
-1. **Security First** - Encryption everywhere, no public buckets
-2. **High Availability** - Multi-AZ deployment
-3. **Scalability** - Auto Scaling 2-10 instances
-4. **Cost Optimized** - Right-sized resources (~$119/month)
-5. **Pulumi TypeScript** - Type-safe IaC
+## 1. Overall Architecture
 
-## Architecture Layers
+```mermaid
+graph TB
+    subgraph Users
+        Client[Users/Clients]
+    end
+    
+    subgraph AWS Cloud
+        VPC[VPC<br/>Multi-AZ]
+        ALB[Load Balancer<br/>High Availability]
+        EC2[EC2 Instances<br/>Auto Scaling]
+        DB[Database<br/>Multi-AZ]
+        S3[S3 Storage<br/>Encrypted]
+    end
+    
+    subgraph Monitoring
+        CW[CloudWatch<br/>Metrics & Logs]
+    end
+    
+    Client --> ALB
+    ALB --> EC2
+    EC2 --> DB
+    EC2 --> S3
+    EC2 --> CW
+```
 
-### Layer 1: CDN & Security
-- **CloudFront**: Global CDN with edge locations
-- **WAF**: Protection against OWASP Top 10, DDoS
-- **SSL/TLS**: HTTPS only, TLS 1.2+
+## 2. Network Architecture
 
-### Layer 2: Load Balancing
-- **ALB**: Application Load Balancer across 2 AZs
-- **Health Checks**: Automated instance monitoring
-- **Access Logs**: Encrypted S3 bucket
+```mermaid
+graph LR
+    subgraph VPC
+        subgraph Public Subnets
+            Pub1[Public Subnet AZ-A]
+            Pub2[Public Subnet AZ-B]
+        end
+        
+        subgraph Private Subnets
+            Priv1[Private Subnet AZ-A]
+            Priv2[Private Subnet AZ-B]
+        end
+        
+        IGW[Internet Gateway]
+        NAT[NAT Gateway]
+    end
+    
+    IGW --> Pub1
+    IGW --> Pub2
+    Pub1 --> NAT
+    NAT --> Priv1
+    NAT --> Priv2
+```
 
-### Layer 3: Compute
-- **EC2**: Auto Scaling Group (2-10 instances)
-- **AMI**: Amazon Linux 2
-- **Instance Type**: t3.small (2 vCPU, 2GB RAM)
-- **Placement**: Private subnets across 2 AZs
+## 3. Security Architecture
 
-### Layer 4: Data
-- **DynamoDB**: NoSQL with KMS encryption
-- **PITR**: Point-in-Time Recovery enabled
-- **Provisioned**: 5 RCU, 5 WCU (scalable)
+```mermaid
+graph TB
+    subgraph Security Layers
+        WAF[WAF<br/>Web Application Firewall]
+        SG[Security Groups<br/>Firewall Rules]
+        NACL[Network ACLs<br/>Subnet Protection]
+        IAM[IAM Roles<br/>Access Control]
+        KMS[KMS Encryption<br/>Data Protection]
+    end
+    
+    WAF --> SG
+    SG --> NACL
+    NACL --> IAM
+    IAM --> KMS
+```
 
-### Layer 5: Security
-- **KMS**: Customer-managed keys for encryption
-- **Secrets Manager**: Secure credential storage
-- **IAM Roles**: EC2 → DynamoDB, S3, CloudWatch
-- **Security Groups**: Minimal port access
+## 4. Data Flow
 
-### Layer 6: Networking
-- **VPC**: 10.0.0.0/16
-- **Public Subnets**: 2 (us-west-2a, us-west-2b)
-- **Private Subnets**: 2 (us-west-2a, us-west-2b)
-- **NAT Gateway**: Outbound internet for private subnets
-- **Internet Gateway**: Public subnet internet access
+```mermaid
+sequenceDiagram
+    participant User
+    participant LB as Load Balancer
+    participant App as Application
+    participant DB as Database
+    participant S3 as S3 Storage
+    
+    User->>LB: 1. Request
+    LB->>App: 2. Route
+    App->>DB: 3. Query Data
+    DB-->>App: 4. Return Data
+    App->>S3: 5. Store Files
+    S3-->>App: 6. Confirm
+    App-->>LB: 7. Response
+    LB-->>User: 8. Return
+```
 
-### Layer 7: Monitoring
-- **CloudWatch Logs**: Encrypted with KMS
-- **ALB Logs**: S3 bucket (encrypted)
-- **Metrics**: All AWS service metrics
-- **Alarms**: Ready for custom alerts
+## 5. Auto-Scaling
 
-## Key Design Decisions
+```mermaid
+graph TB
+    subgraph Metrics
+        CPU[CPU Utilization<br/>>70%]
+        Memory[Memory Usage<br/>>80%]
+    end
+    
+    subgraph Auto Scaling
+        ASG[Auto Scaling Group<br/>Min: 2, Max: 10]
+        ScaleOut[Scale Out<br/>+1 Instance]
+        ScaleIn[Scale In<br/>-1 Instance]
+    end
+    
+    CPU --> ScaleOut
+    Memory --> ScaleOut
+    ScaleOut --> ASG
+    ScaleIn --> ASG
+```
 
-### Why DynamoDB vs RDS?
-- **Scale**: Unlimited throughput
-- **Performance**: Single-digit ms latency
-- **Cost**: Pay per request (cheaper at scale)
-- **HA**: Built-in Multi-AZ
+## 6. Monitoring & Alerts
 
-### Why CloudFront + WAF?
-- **Global**: Edge locations worldwide
-- **DDoS**: AWS Shield Standard included
-- **WAF**: Protection against attacks
-- **Performance**: CDN caching
+```mermaid
+graph LR
+    subgraph Resources
+        EC2[EC2 Instances]
+        RDS[RDS Database]
+        ALB[Load Balancer]
+    end
+    
+    subgraph CloudWatch
+        Metrics[Metrics]
+        Logs[Logs]
+        Alarms[Alarms]
+    end
+    
+    subgraph Notifications
+        SNS[SNS Topic]
+        Email[Email Alerts]
+    end
+    
+    EC2 --> Metrics
+    RDS --> Metrics
+    ALB --> Metrics
+    
+    EC2 --> Logs
+    Metrics --> Alarms
+    Alarms --> SNS
+    SNS --> Email
+```
 
-### Why Pulumi TypeScript?
-- **Type Safety**: Compile-time error checking
-- **Modern**: Familiar JavaScript ecosystem
-- **Testable**: Unit tests with standard tools
-- **Flexible**: Use any npm package
+## 7. Deployment Flow
 
-## Security Architecture
+```mermaid
+graph LR
+    A[Source Code] --> B[Build]
+    B --> C[Test]
+    C --> D[Package]
+    D --> E[Deploy Dev]
+    E --> F[Deploy Staging]
+    F --> G[Deploy Production]
+```
 
-- All data encrypted at rest (KMS)
-- All data encrypted in transit (TLS 1.2+)
-- No public S3 buckets (Block Public Access)
-- IAM roles (no access keys)
-- Private subnets for compute
-- Security groups with minimal ports
-- Secrets Manager for credentials
+## 8. Cost Distribution
 
-## Scalability
+```mermaid
+pie title Monthly Cost Breakdown
+    "EC2 Instances" : 40
+    "RDS Database" : 30
+    "Load Balancer" : 15
+    "S3 Storage" : 5
+    "Data Transfer" : 5
+    "CloudWatch" : 5
+```
 
-- **Horizontal**: Auto Scaling 2-10 instances
-- **Vertical**: Upgrade instance types
-- **Database**: DynamoDB auto-scaling
-- **CDN**: CloudFront global scale
+---
 
-## Cost Breakdown
+## Key Features
 
-- Compute: ~$30/month (2× t3.small)
-- Load Balancer: ~$20/month
-- NAT Gateway: ~$35/month
-- DynamoDB: ~$3/month (light usage)
-- CloudFront: ~$10/month (100GB)
-- Other: ~$21/month
+- **High Availability**: Multi-AZ deployment
+- **Auto Scaling**: Based on metrics
+- **Security**: WAF, Security Groups, Encryption
+- **Monitoring**: CloudWatch metrics and alarms
+- **Cost Optimized**: Right-sized resources
 
-**Total**: ~$119/month (production)
+---
 
-See [README](README.md) for details.
+**Author**: Rahul Ladumor  
+**License**: MIT 2025
